@@ -15,10 +15,16 @@
 % x = color(cMap)
 
 
-color = [10,15; 20,25; 30,35;];
-cMap = [1 2; 3 3];
-img = cMap;
-for r=1:2
-    img(r,:) = 
-end
+% color = [10,15; 20,25; 30,35;];
+% cMap = [1 2; 3 3];
+% img = cMap;
+% for r=1:2
+%     img(r,:) = 
+% end
+
+A = ones(5,3);
+B = 2*ones(5,3);
+
+A ./ B
+
 
