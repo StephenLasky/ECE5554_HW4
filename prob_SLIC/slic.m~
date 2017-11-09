@@ -33,7 +33,6 @@ N = N(1) * N(2);
 % Hint: use linspace, meshgrid
 S = sqrt(N/K);
 C = zeros(5,K,'double');     % setup as [x1 ... xn; y1 ... yn; r; b; g;]
-Cavg = zeros(5,K,'double');  % setup as [x1 ... xn; y1 ... yn; r; b; g;]
 
 last = [S; S];      % last = [x,y]
 C(1:2,1) = last;
@@ -94,12 +93,12 @@ for cluster = 1:K         % for every cluster region, try to assign pixel
             if cMap(y,x,1) == -1    % if not set yet
                 cMap(y,x,1) = cluster;
                 cMap(y,x,2) = d;
-                
+                cCount(cluster) = cCounter(cluster) + 1;    % update the cluster count
             else                    % if already been set
                 if cMap(y,x,2) > d  % if previous distance is larger, assign this one
+                    
                     cMap(y,x,1) = cluster;
                     cMap(y,x,2) = d;
-                    
                 end
             end
             
