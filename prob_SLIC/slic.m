@@ -55,7 +55,7 @@ for i = 2:K
     C(5,i) = interp2(imgB_G, last(1), last(2), 'bilinear');
     
     if isnan(C(3,i))
-        disp('uh oh');
+%         disp('uh oh');
     end
     
     
@@ -80,7 +80,7 @@ cMap = zeros(sizeY,sizeX,2);
 cMap(:,:,DISTANCE_IDX) = inf;     % distances should be infinity 
 
 
-m = 0.75;      % m constant
+m = compactness;
 
 xpr = [0 0];
 ypr = [0 0];
@@ -97,9 +97,6 @@ for cluster = 1:K         % for every cluster region, try to assign pixel
     % create the matrix of the pixels with x,y,r,g,b at each index
     parr = zeros(ny,nx, 5);           % initialize to proper size
     parr(:,:,3:5) = imgB( ypr(1):ypr(2), xpr(1):xpr(2),:);      % automatically set colors
-    if cluster == 8
-        disp('here');
-    end
     
     parr(:,:,1) = repmat(xpr(1):xpr(2),ny,1);                                  % set x values 
     parr(:,:,2) = repmat((ypr(1):ypr(2))',1,nx);
@@ -149,6 +146,24 @@ for cluster = 1:K         % for every cluster region, try to assign pixel
 %     end
 end
 
+% compute error map and display
+% E = zeros(sizeY, sizeX, 'single');
+% for x = 1:sizeX
+%     for y = 1:sizeY
+%         p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+%         cluster = cMap(y,x,CLUSTER_IDX);
+% 
+%         dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
+%         ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
+%         d = sqrt(dc^2 + (ds/S)^2 * m^2);
+%         
+%         E(y,x) = d;
+%     end
+% end
+% E = E / (max(max(E)));
+% figure(); imshow(E);
+
+
 % compute average and update C
 Ccount = zeros(K,1);
 Cavg = zeros(5,K,'double');  % setup as [x1 ... xn; y1 ... yn; r; b; g;]
@@ -186,10 +201,6 @@ for iter = 1: numIter
         % create the matrix of the pixels with x,y,r,g,b at each index
         parr = zeros(ny,nx, 5);           % initialize to proper size
         parr(:,:,3:5) = imgB( ypr(1):ypr(2), xpr(1):xpr(2),:);      % automatically set colors
-        if cluster == 8
-            disp('here');
-        end
-
         parr(:,:,1) = repmat(xpr(1):xpr(2),ny,1);                                  % set x values 
         parr(:,:,2) = repmat((ypr(1):ypr(2))',1,nx);
 
@@ -250,14 +261,32 @@ end
 
 time = toc;
 
-% attempt to visualize the initial cluster
-colors = rand(K,3);    % randomly assign color to each cluster: k clusters, 3 color channels
-for x=1:sizeX
-    for y = 1:sizeY-2
-        imgB(y,x,:) = colors(cMap(y,x,CLUSTER_IDX),:);
-    end
-end
-figure(); imshow(imgB);
+% % attempt to visualize via a color scheme
+% colors = rand(K,3);    % randomly assign color to each cluster: k clusters, 3 color channels
+% for x=1:sizeX
+%     for y = 1:sizeY-2
+%         imgB(y,x,:) = colors(cMap(y,x,CLUSTER_IDX),:);
+%     end
+% end
+% figure(); imshow(imgB);
+
+% compute error map and display
+% E = zeros(sizeY, sizeX, 'single');
+% for x = 1:sizeX
+%     for y = 1:sizeY
+%         p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+%         cluster = cMap(y,x,CLUSTER_IDX);
+% 
+%         dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
+%         ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
+%         d = sqrt(dc^2 + (ds/S)^2 * m^2);
+%         
+%         E(y,x) = d;
+%     end
+% end
+% E = E / (max(max(E)));
+% figure(); imshow(E);
+
 
 cIndMap = cMap(:,:,CLUSTER_IDX);
 
@@ -268,5 +297,10 @@ imgVis = img;
 imgVis(cat(3, bMap, bMap, bMap)) = 1;
 
 cIndMap = uint16(cIndMap);
+% figure(); imshow(imgVis);
+% out = [256*imgB, imgVis];
+% figure(); imshow(imgB);
+% figure(); imshow(out);
 
+size(imgVis);
 end

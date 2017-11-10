@@ -55,8 +55,13 @@ for i = 1:H
     data(i,:,2) = pdf(GMM_BG,feed)';
 end
 
+% print fg/bg probability map
+fgbgLikeMap = data(:,:,1) .* data(:,:,2);
+fgbgLikeMap = fgbgLikeMap / max(max(fgbgLikeMap));
+figure(); imshow(fgbgLikeMap);
+
 data = arrayfun(@(x) -log(x), data);
-data_range = [min(min(min(data))), max(max(max(data)))]
+data_range = [min(min(min(data))), max(max(max(data)))];
 
 
 
@@ -92,7 +97,7 @@ labels = logical(labels);
 
 
 % 7) Visualize the results
-% im(:,:,1) = im(:,:,1) .* inbox;
-% im(:,:,2) = im(:,:,2) .* inbox;   % for G
-% im(:,:,3) = im(:,:,3) .* inbox;   % for B
-% imshow(im);
+im(:,:,1) = im(:,:,1) .* ~labels;
+im(:,:,2) = im(:,:,2) .* ~labels;   % for G
+im(:,:,3) = im(:,:,3) .* labels;   % for B
+figure(); imshow(im);
