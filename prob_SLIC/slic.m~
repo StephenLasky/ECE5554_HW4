@@ -67,104 +67,181 @@ end
 % assign each pixel to the nearest cluster
 % cMap stored as follows: y,x indicates pixel position: and then:
 % [clust,dist]
-cMap = ones(sizeY,sizeX,2);
-cMap = -1 * cMap;   % everything not initialized set to 1
+% cMap = ones(sizeY,sizeX,2);
+% cMap = -1 * cMap;   % everything not initialized set to 1
 
-m = 0.1;      % m constant
+% try the vectorized cMap
+% cMapv = zeros(sizeY,sizeX,2);      
+% cMapv(:,:,1) = inf;     % distances should be infinity
+cMap = zeros(sizeY,sizeX,2);      
+cMap(:,:,1) = inf;     % distances should be infinity 
 
-xprange = [0 0];
-yprange = [0 0];
+m = 0.75;      % m constant
+
+xpr = [0 0];
+ypr = [0 0];
 
 % initialize every pixel
 for cluster = 1:K         % for every cluster region, try to assign pixel
     cx = C(1,cluster);
     cy = C(2,cluster);
-    xprange = [ceil(max(1,cx-S)), floor(min(sizeX,cx+S))];
-    yprange = [ceil(max(1,cy-S)), floor(min(sizeY,cy+S))];
+    xpr = [ceil(max(1,cx-S)), floor(min(sizeX,cx+S))];  % x pixel range
+    ypr = [ceil(max(1,cy-S)), floor(min(sizeY,cy+S))];  % y pixel range
+    nx = xpr(2)-xpr(1)+1;                               % number of x pixels
+    ny = ypr(2)-ypr(1)+1;                               % numbel of y pixels
+    
+    % create the matrix of the pixels with x,y,r,g,b at each index
+    parr = zeros(ny,nx, 5);           % initialize to proper size
+    parr(:,:,3:5) = imgB( ypr(1):ypr(2), xpr(1):xpr(2),:);      % automatically set colors
+    if cluster == 8
+        disp('here');
+    end
+    
+    parr(:,:,1) = repmat(xpr(1):xpr(2),ny,1);                                  % set x values 
+    parr(:,:,2) = repmat((ypr(1):ypr(2))',1,nx);
+    
+    % create the matrix of distances 
+    % dc is now sqrt(dc)
+    dc = (parr(:,:,3) - C(3,cluster)).^2 + (parr(:,:,4) - C(4,cluster)).^2 + (parr(:,:,5) - C(5,cluster)).^2;
+    % ds is now sqrt(ds)
+    ds = (parr(:,:,1) - C(1,cluster)).^2 + (parr(:,:,2) - C(2,cluster)).^2;
+    darr = (dc + ds / (S^2) * m^2).^(0.5);
+    
+    % determine which locations need updated
+    cMapPatch = cMap(ypr(1):ypr(2),xpr(1):xpr(2),:);
+    u = cMapPatch(:,:,1) > darr;
+    cMapPatch(u) = darr(u);     % update distances on cmap
+    u(:,:,2) = u; u(:,:,1) = 0; % change update values to cluster
+    cMapPatch(u) = cluster;
+    cMap(ypr(1):ypr(2),xpr(1):xpr(2),:) = cMapPatch;
+    
+    
+    
     
     % initially set the pixels in the search range
-    for x=xprange(1):xprange(2)
-        for y=yprange(1):yprange(2)
-            p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
-            
-            dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
-            ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
-            d = sqrt(dc^2 + (ds/S)^2 * m^2);
-
-            if cMap(y,x,1) == -1    % if not set yet
-                cMap(y,x,1) = cluster;
-                cMap(y,x,2) = d;
-                
-            else                    % if already been set
-                if cMap(y,x,2) > d  % if previous distance is larger, assign this one
-                    cMap(y,x,1) = cluster;
-                    cMap(y,x,2) = d;
-                    
-                end
-            end
-            
-        end
-    end
+%     for x=xpr(1):xpr(2)
+%         for y=ypr(1):ypr(2)
+%             p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+%             
+%             dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
+%             ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
+%             d = sqrt(dc^2 + (ds/S)^2 * m^2);
+%          
+%             
+% 
+%             if cMap(y,x,1) == -1    % if not set yet
+%                 cMap(y,x,1) = cluster;
+%                 cMap(y,x,2) = d;
+%                 
+%             else                    % if already been set
+%                 if cMap(y,x,2) > d  % if previous distance is larger, assign this one
+%                     cMap(y,x,1) = cluster;
+%                     cMap(y,x,2) = d;
+%                     
+%                 end
+%             end
+%             
+%         end
+%     end
 end
 
 % compute average and update C
-Ccount = zeros(K);
+Ccount = zeros(K,1);
 Cavg = zeros(5,K,'double');  % setup as [x1 ... xn; y1 ... yn; r; b; g;]
 for x = 1:sizeX
     for y = 1:sizeY
         cluster = cMap(y,x,1);
-        if clust ~= -
-        Ccount(cluster) = Ccount(cluster) + 1;
-        p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
-        Cavg(:,cluster) = Cavg(:,cluster) + p;
+        if cluster ~= -1
+            Ccount(cluster) = Ccount(cluster) + 1;
+            p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+            Cavg(:,cluster) = Cavg(:,cluster) + p;
+        end
     end
 end
-C = Cavg ./ Ccount;
+for r = 1:5
+    Cavg(r,:) = Cavg(r,:) ./ Ccount';
+end
+C = Cavg;
 
 % figure(); imshow(imgB);
 
 % SLIC superpixel segmentation
 % In each iteration, we update the cluster assignment and then update the cluster center
 
-numIter  = 3; % Number of iteration for running SLIC
+numIter  = 1; % Number of iteration for running SLIC
 for iter = 1: numIter
 	% 1) Update the pixel to cluster assignment
-	for cluster = 1:k
+	for cluster = 1:K
         cx = C(1,cluster);
         cy = C(2,cluster);
-        xprange = [ceil(max(1,cx-S)), floor(min(sizeX,cx+S))];
-        yprange = [ceil(max(1,cy-S)), floor(min(sizeY,cy+S))];
-        
-        for x=xprange(1):xprange(2)
-            for y=yprange(1):yprange(2)
-                p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+        xpr = [ceil(max(1,cx-S)), floor(min(sizeX,cx+S))];  % x pixel range
+        ypr = [ceil(max(1,cy-S)), floor(min(sizeY,cy+S))];  % y pixel range
+        nx = xpr(2)-xpr(1)+1;                               % number of x pixels
+        ny = ypr(2)-ypr(1)+1;                               % numbel of y pixels
 
-                dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
-                ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
-                d = sqrt(dc^2 + (ds/S)^2 * m^2);
-
-                if cMap(y,x,2) > d  % if previous distance is larger, assign this one
-                    cMap(y,x,1) = cluster;
-                    cMap(y,x,2) = d;
-                end
-            end
+        % create the matrix of the pixels with x,y,r,g,b at each index
+        parr = zeros(ny,nx, 5);           % initialize to proper size
+        parr(:,:,3:5) = imgB( ypr(1):ypr(2), xpr(1):xpr(2),:);      % automatically set colors
+        if cluster == 8
+            disp('here');
         end
+
+        parr(:,:,1) = repmat(xpr(1):xpr(2),ny,1);                                  % set x values 
+        parr(:,:,2) = repmat((ypr(1):ypr(2))',1,nx);
+
+        % create the matrix of distances 
+        % dc is now sqrt(dc)
+        dc = (parr(:,:,3) - C(3,cluster)).^2 + (parr(:,:,4) - C(4,cluster)).^2 + (parr(:,:,5) - C(5,cluster)).^2;
+        % ds is now sqrt(ds)
+        ds = (parr(:,:,1) - C(1,cluster)).^2 + (parr(:,:,2) - C(2,cluster)).^2;
+        darr = (dc + ds / (S^2) * m^2).^(0.5);
+
+        % determine which locations need updated
+        cMapPatch = cMap(ypr(1):ypr(2),xpr(1):xpr(2),:);
+        u = cMapPatch(:,:,1) > darr;
+        cMapPatch(u) = darr(u);     % update distances on cmap
+        u(:,:,2) = u; u(:,:,1) = 0; % change update values to cluster
+        cMapPatch(u) = cluster;
+        cMap(ypr(1):ypr(2),xpr(1):xpr(2),:) = cMapPatch;
+        
+        
+        
+        
+%         for x=xpr(1):xpr(2)
+%             for y=ypr(1):ypr(2)
+%                 p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+% 
+%                 dc = sqrt(sum((p(3:5) - C(3:5,cluster)).^2)); % colors only
+%                 ds = sqrt(sum((p(1:2) - C(1:2,cluster)).^2)); % spatial distance only
+%                 d = sqrt(dc^2 + (ds/S)^2 * m^2);
+% 
+%                 if cMap(y,x,2) > d  % if previous distance is larger, assign this one
+%                     cMap(y,x,1) = cluster;
+%                     cMap(y,x,2) = d;
+%                 end
+%             end
+%         end
     end
     
     
 
 	% 2) Update the cluster center by computing the mean
-    Ccount = zeros(K);
+    Ccount = zeros(K,1);
     Cavg = zeros(5,K,'double');  % setup as [x1 ... xn; y1 ... yn; r; b; g;]
     for x = 1:sizeX
         for y = 1:sizeY
             cluster = cMap(y,x,1);
-            Ccount(cluster) = Ccount(cluster) + 1;
-            p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
-            Cavg(:,cluster) = Cavg(:,cluster) + p;
+            if cluster ~= -1
+                Ccount(cluster) = Ccount(cluster) + 1;
+                p = [x,y,imgB(y,x,1),imgB(y,x,2),imgB(y,x,3)]';
+                Cavg(:,cluster) = Cavg(:,cluster) + p;
+            end
         end
     end
-    C = Cavg ./ Ccount;
+    for r = 1:5
+        Cavg(r,:) = Cavg(r,:) ./ Ccount';
+    end
+    C = Cavg;
 end
 
 time = toc;
@@ -176,6 +253,7 @@ for x=1:sizeX
         imgB(y,x,:) = colors(cMap(y,x,1),:);
     end
 end
+figure(); imshow(imgB);
 
 
 

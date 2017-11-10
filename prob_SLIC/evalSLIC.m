@@ -11,7 +11,7 @@ addpath(genpath('superpixel_benchmark'));
 main_benchmark('evalSlicSetting.txt');
 
 % Report the case with K = 256
-load('result\slic\slic_256\benchmarkResult.mat');
+load('result/slic/slic_256/benchmarkResult.mat');
 
 avgRecall   =  mean(imRecall(:));
 avgUnderseg =  mean(imUnderseg(:));
