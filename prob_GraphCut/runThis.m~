@@ -6,7 +6,7 @@ org_im = im;
 im = rgb2gray(im);
 
 H = size(im, 1); W = size(im, 2); K = 3;
-num_components = 5;
+num_components = 7;
 
 % from piazza:
 % You can use the boolean matrix we provided to initialize the label, 
@@ -35,8 +35,7 @@ GMM_BG = fitgmdist(im(~inbox),num_components);
 % - data(:,:,1) the cost of assigning pixels to label 1
 % - data(:,:,2) the cost of assigning pixels to label 2
 data = zeros(H,W,2,'double');
-% cost_FG = - log(pdf(GMM_FG, X));
-% cost_BG = - log(pdf(GMM_BG, X));
+% data(:,:,1) = arrayfun(@(x) pdf(GMM_FG,x),im);
 
 for i = 1:H
     data(i,:,1) = pdf(GMM_FG,im(i,:)')';
@@ -44,15 +43,11 @@ for i = 1:H
 end
 
 data = arrayfun(@(x) -log(x), data);
-data_range = [min(min(min(data))), max(max(max(data)))]
-
-
 
 % 4) Prepare smoothness cost
 % - smoothcost [2 x 2]
 % - smoothcost(1, 2) = smoothcost(2,1) => the cost if neighboring pixels do not have the same label
 smoothcost = [0 1; 1 0];
-% smoothcost = [0.1 0.5 ; 0.5 0.1];
 
 % 5) Prepare contrast sensitive cost
 % - vC: [Height x Width]: vC = 2-exp(-gy/(2*sigma)); 
@@ -62,16 +57,13 @@ sigma = 1;
 vC = 2-exp(-gy/(2*sigma)); 
 hC = 2-exp(-gx/(2*sigma));
 
-vC_range = [min(min(vC)), max(max(vC))]
-hC_range = [min(min(hC)), max(max(hC))]
-
 % 6) Solve the labeling using graph cut
 % - Check the function GraphCut
-[gch] = GraphCut('open', data ,smoothcost, vC, hC);
-[gch labels] = GraphCut('expand', gch);
+gch = GraphCut('open', data, smoothcost, vC, hC);
+[gch, labels] = GraphCut('get');
+
 size(gch)
 size(labels)
-
 
 % 7) Visualize the results
 % im(:,:,1) = im(:,:,1) .* inbox;

@@ -1,0 +1,1 @@
+figure(); imshow(imread('cat.jpg'))
